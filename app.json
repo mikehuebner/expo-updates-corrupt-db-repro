@@ -23,8 +23,17 @@
     },
     "runtimeVersion": "1.0.0",
     "updates": {
-      "url": "https://u.expo.dev/00000000-0000-0000-0000-000000000000",
-      "checkAutomatically": "NEVER"
+      "url": "https://u.expo.dev/7e783295-8fb8-4c89-9cd5-eb32934d2a32",
+      "checkAutomatically": "NEVER",
+      "requestHeaders": {
+        "expo-channel-name": "repro"
+      }
+    },
+    "owner": "mike.huebner",
+    "extra": {
+      "eas": {
+        "projectId": "7e783295-8fb8-4c89-9cd5-eb32934d2a32"
+      }
     }
   }
 }

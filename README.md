@@ -1,11 +1,11 @@
 # expo-updates: a corrupted updates database is never rebuilt (iOS)
 
-A blank SDK 58 app (`create-expo-app --template blank`) with `expo-updates` added. It shows the reproduction for an expo-updates bug on iOS. When the updates database (`.expo-internal/expo-v*.db`) is corrupted, every launch is an emergency launch, and the file is never replaced.
+A blank SDK 58 app (`create-expo-app --template blank`) with `expo-updates` added. It shows the reproduction for an expo-updates bug on iOS. When the updates database (`.expo-internal/expo-v*.db`) is corrupted, every launch is an emergency launch, every update download fails, and the file is never replaced until the app is reinstalled.
 
 The only changes from the template:
 
-- `app.json`: `ios.bundleIdentifier`, `runtimeVersion`, and `updates`. The update URL is a placeholder. With `checkAutomatically: "NEVER"` the app never contacts it, so no EAS project or server is needed.
-- `App.js`: shows `isEmergencyLaunch`, `emergencyLaunchReason`, `isEmbeddedLaunch`, and `updateId`. Its buttons corrupt the database with `expo-file-system`, or delete `.expo-internal` (the workaround).
+- `app.json`: `ios.bundleIdentifier`, `runtimeVersion`, and `updates` (an EAS Update project with a `repro` channel, and `checkAutomatically: "NEVER"` so updates are only checked from the button).
+- `App.js`: shows which update is running, a cold-launch counter, the expo-updates launch state, the database file's header and modified time, and expo-updates errors from this launch. Its buttons check for an update, corrupt the database with `expo-file-system`, or delete `.expo-internal` (the workaround).
 
 ## Steps
 
@@ -17,13 +17,16 @@ npx expo run:ios --configuration Release            # simulator
 npx expo run:ios --configuration Release --device   # physical iPhone: pick it, and set a development team when asked
 ```
 
-1. The app launches normally and shows `isEmergencyLaunch: false`. Launching once creates the database.
-2. Tap **Corrupt database ("file is not a database")** or **Corrupt database ("malformed")**.
-3. Force-quit the app and open it again. It shows `isEmergencyLaunch: true`, and `emergencyLaunchReason` contains the SQLite error:
-   - `SQLitePrepareError: (code: 26; …; message: file is not a database)`
-   - `SQLiteGetResultsError: (code: 11; …; message: database disk image is malformed)`
-4. Force-quit and reopen as many times as you like. Every launch is an emergency launch, and expo-updates never replaces the file. Only reinstalling the app fixes it.
-5. Optional: tap **Workaround: delete .expo-internal**, then force-quit and reopen. expo-updates creates a new database and launches normally.
+To publish an update (to your own EAS project, run `npx eas-cli init` and `npx eas-cli channel:create repro` first):
+
+```sh
+EXPO_PUBLIC_LABEL="Update B" npx eas-cli update --branch repro --message "Update B" --platform ios --environment production
+```
+
+1. **Updates work.** Publish "Update B", tap **Check for update**, then force-quit and reopen. The app shows **Running: Update B**.
+2. **Corrupt the database.** Tap **Corrupt database ("file is not a database")** or **Corrupt database ("malformed")**, then force-quit and reopen. The app shows `isEmergencyLaunch: true` and is back on the embedded build, so the downloaded Update B is gone. The database header and modified time show the file wasn't replaced.
+3. **Updates never arrive.** Publish "Update C" and tap **Check for update**. The download fails with `ERR_UPDATES_FETCH Failed to download new update: … file is not a database` (or `database disk image is malformed`). Every reopen is another emergency launch.
+4. **Workaround.** Tap **Workaround: delete .expo-internal**, then force-quit and reopen. expo-updates creates a new database, **Check for update** downloads Update C, and the next reopen shows **Running: Update C**.
 
 ## Why
 
